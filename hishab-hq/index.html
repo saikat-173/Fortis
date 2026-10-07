@@ -1,0 +1,912 @@
+<title>Hishab HQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,750&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Hind+Siliguri:wght@400;500;600&display=swap">
+<style>
+/* Layout: fixed left rail of company functions + one working canvas; drawer from the right for every edit. Collapses to a top strip on phones. */
+:root{
+  --bg:#F3F4F7; --surface:#FFFFFF; --surface-2:#ECEEF3; --line:#DCE0E8; --line-2:#C9CFDA;
+  --fg:#121722; --muted:#5A6476; --faint:#8A93A3;
+  --accent:#2F55D4; --accent-ink:#FFFFFF; --accent-soft:#E3E9FB;
+  --good:#16794A; --good-soft:#DDF1E6; --warn:#A86410; --warn-soft:#F8EBD6; --bad:#B8361E; --bad-soft:#F8E0DA;
+  --shadow:0 1px 2px rgba(18,23,34,.06),0 8px 24px rgba(18,23,34,.06);
+  --font-display:"Bricolage Grotesque","Hind Siliguri",ui-sans-serif,system-ui,sans-serif;
+  --font-body:"Instrument Sans","Hind Siliguri",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono","Hind Siliguri",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1117; --surface:#151A23; --surface-2:#1C2330; --line:#262E3C; --line-2:#344055;
+  --fg:#E6EAF2; --muted:#98A2B5; --faint:#6D778A;
+  --accent:#8AA4FF; --accent-ink:#0B1433; --accent-soft:#1D2747;
+  --good:#5BC88C; --good-soft:#15301F; --warn:#E3A853; --warn-soft:#33270F; --bad:#F2856B; --bad-soft:#3A1C16;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1117; --surface:#151A23; --surface-2:#1C2330; --line:#262E3C; --line-2:#344055;
+  --fg:#E6EAF2; --muted:#98A2B5; --faint:#6D778A;
+  --accent:#8AA4FF; --accent-ink:#0B1433; --accent-soft:#1D2747;
+  --good:#5BC88C; --good-soft:#15301F; --warn:#E3A853; --warn-soft:#33270F; --bad:#F2856B; --bad-soft:#3A1C16;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3); color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--font-body);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* shell */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);height:100%}
+.rail{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:18px;padding:20px 12px;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font:750 15px/1 var(--font-display)}
+.brand b{font:650 18px/1.1 var(--font-display);letter-spacing:-.01em}
+.brand small{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav .grp{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);padding:12px 10px 4px;font-weight:600}
+.nav button{display:flex;align-items:center;gap:10px;border:0;background:none;padding:8px 10px;border-radius:8px;color:var(--muted);font-weight:500;text-align:left;white-space:nowrap}
+.nav button:hover{background:var(--surface-2);color:var(--fg)}
+.nav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+.nav .count{margin-left:auto;font:500 11px var(--font-mono);color:var(--faint)}
+.nav button[aria-current="page"] .count{color:var(--accent)}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:0 4px}
+.sync{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.sync.on i{background:var(--good)} .sync.local i{background:var(--warn)}
+
+.main{overflow-y:auto;min-width:0}
+.top{position:sticky;top:0;z-index:5;background:color-mix(in oklab,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:12px clamp(16px,3vw,36px)}
+.search{flex:1;max-width:420px;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 12px;color:var(--faint);cursor:text;text-align:left}
+.search span{flex:1}
+kbd{font:500 11px var(--font-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px;color:var(--muted);background:var(--surface-2)}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 13px;font-weight:600;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--line-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--fg)}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:7px}
+.btn.danger{color:var(--bad)}
+.btn.danger.armed{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.iconbtn{border:0;background:none;padding:7px;border-radius:8px;color:var(--muted);display:inline-grid;place-items:center}
+.iconbtn:hover{background:var(--surface-2);color:var(--fg)}
+
+.page{padding-inline:clamp(16px,3vw,36px);padding-block:26px 64px;display:flex;flex-direction:column;gap:22px;max-width:1360px}
+.ph{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.ph h1{font:700 clamp(26px,3vw,34px)/1.05 var(--font-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.ph p{margin:6px 0 0;color:var(--muted);max-width:68ch}
+.ph .tools{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600}
+
+.banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--warn-soft);color:var(--fg);border:1px solid color-mix(in oklab,var(--warn) 30%,transparent);border-radius:var(--r);padding:10px 14px;font-size:14px}
+.banner b{color:var(--warn)}
+.banner .btn{margin-left:auto}
+
+/* cards & grids */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;min-width:0}
+.card > header{display:flex;align-items:center;gap:10px;padding:14px 16px 6px}
+.card > header h2{font:650 16px/1.2 var(--font-display);margin:0;letter-spacing:-.01em}
+.card > header .more{margin-left:auto}
+.card .body{padding:6px 16px 16px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.kpi{background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .l{font-size:12.5px;color:var(--muted);font-weight:500}
+.kpi .v{font:600 clamp(22px,2.3vw,28px)/1.1 var(--font-mono);letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .s{font-size:12.5px;color:var(--faint)}
+.kpi .s.good{color:var(--good)} .kpi .s.bad{color:var(--bad)} .kpi .s.warn{color:var(--warn)}
+
+/* chips & pills */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;color:color-mix(in oklab,var(--c) 72%,var(--fg));background:color-mix(in oklab,var(--c) 13%,transparent);white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c)}
+.pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+.meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.due.over{color:var(--bad);font-weight:600} .due.soon{color:var(--warn);font-weight:600}
+
+/* rows */
+.rows{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid var(--line);cursor:pointer;min-width:0}
+.rows .row:first-child{border-top:0}
+.row:hover{background:color-mix(in oklab,var(--surface-2) 60%,transparent)}
+.row .t{flex:1;min-width:0}
+.row .t b{font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .amt{font:500 14px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.amt.in{color:var(--good)} .amt.out{color:var(--bad)}
+.datechip{width:46px;flex:none;text-align:center;border:1px solid var(--line);border-radius:8px;padding:3px 0;line-height:1.05}
+.datechip b{display:block;font:650 16px var(--font-display)}
+.datechip small{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.datechip.over{border-color:color-mix(in oklab,var(--bad) 50%,transparent);color:var(--bad)}
+.datechip.over small{color:var(--bad)}
+.check{width:20px;height:20px;flex:none;border-radius:6px;border:1.6px solid var(--line-2);background:var(--surface);display:grid;place-items:center;padding:0}
+.check:hover{border-color:var(--accent)}
+.check.on{background:var(--good);border-color:var(--good);color:var(--surface)}
+.check svg{width:13px;height:13px;stroke-width:3}
+.done-t{text-decoration:line-through;color:var(--faint)}
+.empty{padding:22px 8px;text-align:center;color:var(--muted);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.bucket{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:650;color:var(--faint);padding:14px 4px 4px;display:flex;gap:8px}
+.bucket span{margin-left:auto;font:500 12px var(--font-mono);letter-spacing:0;text-transform:none;color:var(--muted)}
+.bucket.bad{color:var(--bad)}
+
+/* progress */
+.bar{height:8px;border-radius:99px;background:var(--surface-2);position:relative;overflow:visible}
+.bar > i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--accent)}
+.bar > i.good{background:var(--good)} .bar > i.warn{background:var(--warn)} .bar > i.bad{background:var(--bad)}
+.bar > em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--fg);opacity:.55;border-radius:2px}
+
+/* board */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:9px;padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:7px;padding:5px 11px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.fchip[aria-pressed="true"]{border-color:var(--fg);color:var(--fg)}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(250px,1fr);gap:14px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--surface-2);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:160px;transition:outline-color .15s;outline:2px dashed transparent;outline-offset:-2px}
+.col.over{outline-color:var(--accent)}
+.col h3{display:flex;align-items:center;gap:8px;margin:2px 4px 4px;font:650 13.5px var(--font-display)}
+.col h3 span{font:500 12px var(--font-mono);color:var(--faint)}
+.col h3 .add{margin-left:auto}
+.tcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;cursor:grab;box-shadow:0 1px 1px rgba(0,0,0,.03)}
+.tcard:hover{border-color:var(--line-2)}
+.tcard.dragging{opacity:.45}
+.tcard .tt{display:flex;gap:9px;align-items:flex-start;font-weight:600;font-size:14px;line-height:1.35}
+.tcard .tt > span{flex:1;min-width:0;overflow-wrap:anywhere}
+.prio{width:8px;height:8px;border-radius:50%;flex:none;margin-top:6px}
+.prio.high{background:var(--bad)} .prio.med{background:var(--warn)} .prio.low{background:var(--line-2)}
+.dots{display:inline-flex;gap:2px}
+.dots i{width:6px;height:6px;border-radius:2px;background:var(--line)} .dots i.on{background:var(--fg)}
+
+/* table */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:650;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr{cursor:pointer} tbody tr:hover{background:color-mix(in oklab,var(--surface-2) 60%,transparent)}
+td.r,th.r{text-align:right}
+
+/* chart */
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font:500 11px var(--font-mono)}
+.chart text.cur{fill:var(--fg);font-weight:700}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .recv{fill:var(--good)} .chart .exp{fill:color-mix(in oklab,var(--good) 35%,var(--surface))} .chart .out{fill:color-mix(in oklab,var(--bad) 70%,var(--surface))}
+.chart .curband{fill:var(--surface-2)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.mini{display:flex;flex-direction:column;gap:8px}
+.mini .lrow{display:grid;grid-template-columns:90px 1fr 28px;gap:10px;align-items:center;font-size:13px}
+.mini .lrow span:last-child{text-align:right;font-family:var(--font-mono);color:var(--muted)}
+
+/* targets */
+.tgt{padding:16px;display:flex;flex-direction:column;gap:12px;cursor:pointer}
+.tgt:hover{border-color:var(--line-2)}
+.tgt h3{margin:0;font:650 16px/1.25 var(--font-display);overflow-wrap:anywhere}
+.tgt .big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.tgt .big b{font:600 24px var(--font-mono);letter-spacing:-.03em}
+.tgt .big span{color:var(--muted);font:500 13px var(--font-mono)}
+.inline-num{width:110px;border:1px solid var(--line);border-radius:7px;padding:4px 8px;background:var(--surface);font:500 13px var(--font-mono)}
+
+/* plan */
+.obj{display:flex;gap:10px;align-items:flex-start;padding:5px 0;font-size:14px}
+.obj .check{margin-top:1px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,14,22,.38);z-index:20;opacity:0;pointer-events:none;transition:opacity .18s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(500px,100%);background:var(--surface);z-index:21;transform:translateX(102%);transition:transform .22s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(0,0,0,.15);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer.on{transform:none}
+.drawer header{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.drawer header h2{margin:0;font:650 19px var(--font-display);flex:1}
+.drawer form{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.drawer footer{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--line);align-items:center}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:12.5px;font-weight:600;color:var(--muted)}
+.f input,.f select,.f textarea{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:9px 11px;width:100%;min-width:0}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.f textarea{min-height:84px;resize:vertical}
+.f .hint{font-size:12px;color:var(--faint)}
+.f.title input{font:600 18px var(--font-display);border-color:transparent;padding-inline:0;background:none}
+.f.title input:focus{box-shadow:none;border-color:transparent;border-bottom-color:var(--accent)}
+.fpair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* palette & menu */
+.pal{position:fixed;left:50%;top:12vh;transform:translateX(-50%);width:min(580px,calc(100% - 32px));background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.25);z-index:30;overflow:hidden}
+.pal input{width:100%;border:0;border-bottom:1px solid var(--line);padding:16px 18px;font-size:16px;background:none;outline:none}
+.pal ul{list-style:none;margin:0;padding:6px;max-height:min(60vh,420px);overflow-y:auto}
+.pal li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+.pal li small{margin-left:auto;color:var(--faint);font-size:12px}
+.pal li.sel{background:var(--accent-soft);color:var(--accent)}
+.pal li.sel small{color:var(--accent)}
+.pal .sec{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:650;padding:10px 12px 4px;cursor:default}
+.menu{position:fixed;z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.18);padding:6px;width:250px}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:8px 10px;border-radius:7px;text-align:left;font-size:14px;font-weight:500}
+.menu button:hover,.menu button:focus-visible{background:var(--surface-2)}
+.menu button small{margin-left:auto;color:var(--faint);font-size:11.5px}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:14px;font-weight:500;opacity:0;transition:.2s;z-index:40;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+.welcome{display:flex;flex-direction:column;gap:14px;align-items:flex-start;padding:28px}
+.welcome h2{margin:0;font:700 24px var(--font-display);letter-spacing:-.02em}
+.welcome p{margin:0;color:var(--muted);max-width:60ch}
+
+.hide-sm{}
+@media (max-width:1100px){.grid3{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:100%}
+  .rail{min-width:0;flex-direction:row;align-items:center;padding:10px 16px;gap:12px;border-right:0;border-bottom:1px solid var(--line);overflow:visible}
+  .brand small,.rail-foot,.nav .grp,.nav .count{display:none}
+  .nav{flex-direction:row;overflow-x:auto;gap:2px;flex:1;min-width:0;scrollbar-width:none}
+  .nav button{padding:7px 10px;font-size:13.5px}
+  .grid2,.grid3{grid-template-columns:minmax(0,1fr)}
+  .hide-sm{display:none}
+  .top{padding-block:10px}
+}
+@media (max-width:520px){.kpis{grid-template-columns:minmax(0,1fr)}.fpair{grid-template-columns:1fr}.brand b{display:none}.search kbd{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand"><div class="mark">৳</div><div><b>Hishab HQ</b><small>Plans, money and work</small></div></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <button class="btn ghost sm" data-act="settings" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"/></svg>Settings &amp; data</button>
+      <div class="sync" id="sync"><i></i><span>Connecting…</span></div>
+    </div>
+  </aside>
+  <div class="main" id="main">
+    <div class="top">
+      <button class="search" data-act="palette" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></svg><span>Search or jump to…</span><kbd>Ctrl K</kbd></button>
+      <div class="spacer"></div>
+      <button class="btn primary" data-act="quickadd" type="button" id="qaBtn"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New<kbd class="hide-sm" style="background:transparent;color:inherit;border-color:currentColor;opacity:.6">N</kbd></button>
+    </div>
+    <div id="view"></div>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+/* ---------- utils ---------- */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today=()=>iso(new Date());
+const parseD=s=>{if(!s)return null;const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return iso(d)};
+const days=(s)=>s?Math.round((parseD(s)-parseD(today()))/864e5):null;
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtD=s=>{if(!s)return"";const d=parseD(s);return d.getDate()+" "+MON[d.getMonth()]+(d.getFullYear()!==new Date().getFullYear()?" "+d.getFullYear():"")};
+const sum=(a,f=x=>+x.amount||0)=>a.reduce((s,x)=>s+f(x),0);
+const icon=(p,c="i")=>`<svg class="${c}" viewBox="0 0 24 24"><path d="${p}"/></svg>`;
+const I={
+  home:"M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z",
+  plan:"M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14",
+  task:"M9 11l3 3 8-8M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11",
+  target:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01",
+  wallet:"M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14.5h.01",
+  folder:"M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z",
+  box:"M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
+  flask:"M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3M7 15h10",
+  ops:"M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2M21 4v5h-5M3 20v-5h5",
+  invest:"M3 17l6-6 4 4 8-8M15 7h6v6",
+  plus:"M12 5v14M5 12h14", x:"M6 6l12 12M18 6 6 18", check:"M5 12l5 5 9-10",
+};
+
+/* ---------- domain ---------- */
+const AREAS={
+  business:{l:"Business",c:"#7C3AED"}, product:{l:"Product",c:"#EA580C"}, rnd:{l:"R&D",c:"#C026D3"},
+  projects:{l:"Projects",c:"#2563EB"}, ops:{l:"Operations",c:"#0891B2"}, finance:{l:"Finance",c:"#CA8A04"}, invest:{l:"Investment",c:"#059669"},
+};
+const areaOpts=Object.entries(AREAS).map(([k,a])=>[k,a.l]);
+const KINDS={
+  plan:{l:"Plan",view:"plans",icon:I.plan,fields:[
+    {k:"title",t:"text",l:"Plan name",req:1,ph:"e.g. 2027 R&D plan"},
+    {k:"area",t:"select",l:"Area",opts:areaOpts,def:"business"},
+    {k:"horizon",t:"select",l:"Horizon",opts:[["quarter","This quarter"],["half","Next 6 months"],["year","This year"],["long","3+ years"]],def:"quarter",pair:1},
+    {k:"status",t:"select",l:"Status",opts:[["draft","Draft"],["active","Active"],["done","Completed"]],def:"active",pair:1},
+    {k:"summary",t:"textarea",l:"Why this plan / what success looks like"},
+    {k:"objectives",t:"lines",l:"Key objectives",hint:"One per line. Tick them off from the plan card."},
+  ]},
+  task:{l:"Task",view:"tasks",icon:I.task,fields:[
+    {k:"title",t:"text",l:"What needs doing",req:1,ph:"e.g. Send proposal to client"},
+    {k:"area",t:"select",l:"Area",opts:areaOpts,def:"business",pair:1},
+    {k:"priority",t:"select",l:"Priority",opts:[["high","High"],["med","Medium"],["low","Low"]],def:"med",pair:1},
+    {k:"status",t:"select",l:"Status",opts:[["todo","To do"],["doing","In progress"],["done","Done"]],def:"todo",pair:2},
+    {k:"due",t:"date",l:"Due date",pair:2},
+    {k:"projectId",t:"project",l:"Project"},
+    {k:"notes",t:"textarea",l:"Notes"},
+  ]},
+  target:{l:"Target",view:"targets",icon:I.target,fields:[
+    {k:"title",t:"text",l:"Target",req:1,ph:"e.g. Q4 revenue"},
+    {k:"area",t:"select",l:"Area",opts:areaOpts,def:"business",pair:1},
+    {k:"unit",t:"select",l:"Measured in",opts:[["money","Money"],["count","Count"],["percent","Percent"]],def:"money",pair:1},
+    {k:"current",t:"number",l:"Where we are now",def:0,pair:2},
+    {k:"goal",t:"number",l:"Goal",req:1,pair:2},
+    {k:"start",t:"date",l:"Start date",def:()=>today(),pair:3},
+    {k:"deadline",t:"date",l:"Deadline",req:1,pair:3},
+    {k:"notes",t:"textarea",l:"Notes"},
+  ]},
+  txn:{l:"Hishab entry",view:"hishab",icon:I.wallet,fields:[
+    {k:"dir",t:"select",l:"Type",opts:[["in","Money in"],["out","Money out"]],def:"in",pair:1},
+    {k:"status",t:"select",l:"Status",opts:[["pending","Pending"],["done","Received / paid"]],def:"pending",pair:1},
+    {k:"title",t:"text",l:"Description",req:1,ph:"e.g. Invoice #204, milestone 2"},
+    {k:"party",t:"text",l:"Client / payee",ph:"Who pays or gets paid"},
+    {k:"amount",t:"number",l:"Amount",req:1,pair:2},
+    {k:"date",t:"date",l:"Expected date",def:()=>today(),req:1,pair:2},
+    {k:"category",t:"text",l:"Category",ph:"Project fee, retainer, salary, rent…",pair:3},
+    {k:"area",t:"select",l:"Area",opts:areaOpts,def:"finance",pair:3},
+    {k:"notes",t:"textarea",l:"Notes"},
+  ]},
+  project:{l:"Project",view:"projects",icon:I.folder,fields:[
+    {k:"title",t:"text",l:"Project name",req:1},
+    {k:"area",t:"select",l:"Area",opts:areaOpts,def:"projects",pair:1},
+    {k:"status",t:"select",l:"Status",opts:[["planning","Planning"],["active","Active"],["hold","On hold"],["done","Delivered"]],def:"active",pair:1},
+    {k:"owner",t:"text",l:"Owner",pair:2},
+    {k:"client",t:"text",l:"Client",pair:2},
+    {k:"start",t:"date",l:"Start",def:()=>today(),pair:3},
+    {k:"end",t:"date",l:"Deadline",pair:3},
+    {k:"budget",t:"number",l:"Budget",pair:4},
+    {k:"spent",t:"number",l:"Spent so far",pair:4},
+    {k:"progress",t:"number",l:"Progress % (used when the project has no tasks)",def:0},
+    {k:"notes",t:"textarea",l:"Notes"},
+  ]},
+  feature:{l:"Product feature",view:"product",icon:I.box,fields:[
+    {k:"title",t:"text",l:"Feature",req:1},
+    {k:"product",t:"text",l:"Product",ph:"Which product",pair:1},
+    {k:"quarter",t:"text",l:"Target quarter",ph:"Q1 2027",pair:1},
+    {k:"stage",t:"select",l:"Stage",opts:[["idea","Idea"],["discovery","Discovery"],["building","Building"],["testing","Testing"],["launched","Launched"]],def:"idea"},
+    {k:"impact",t:"select",l:"Impact",opts:[["1","1 · Low"],["2","2"],["3","3 · Medium"],["4","4"],["5","5 · High"]],def:"3",pair:2},
+    {k:"effort",t:"select",l:"Effort",opts:[["1","1 · Small"],["2","2"],["3","3 · Medium"],["4","4"],["5","5 · Large"]],def:"3",pair:2},
+    {k:"notes",t:"textarea",l:"Notes / spec"},
+  ]},
+  experiment:{l:"R&D experiment",view:"rnd",icon:I.flask,fields:[
+    {k:"title",t:"text",l:"Research topic",req:1},
+    {k:"hypothesis",t:"textarea",l:"Hypothesis",ph:"We believe that… We will know it works when…"},
+    {k:"stage",t:"select",l:"Stage",opts:[["idea","Idea"],["research","Researching"],["prototype","Prototyping"],["validated","Validated"],["dropped","Dropped"]],def:"idea"},
+    {k:"owner",t:"text",l:"Owner",pair:1},
+    {k:"due",t:"date",l:"Review date",pair:1},
+    {k:"budget",t:"number",l:"Budget",pair:2},
+    {k:"spent",t:"number",l:"Spent",pair:2},
+    {k:"findings",t:"textarea",l:"Findings so far"},
+  ]},
+  ops:{l:"Ops routine",view:"ops",icon:I.ops,fields:[
+    {k:"title",t:"text",l:"Routine",req:1,ph:"e.g. Pay salaries, VAT return, server backup check"},
+    {k:"freq",t:"select",l:"Repeats",opts:[["daily","Daily"],["weekly","Weekly"],["monthly","Monthly"],["quarterly","Quarterly"],["yearly","Yearly"]],def:"monthly",pair:1},
+    {k:"nextDue",t:"date",l:"Next due",def:()=>today(),req:1,pair:1},
+    {k:"owner",t:"text",l:"Owner",pair:2},
+    {k:"area",t:"select",l:"Area",opts:areaOpts,def:"ops",pair:2},
+    {k:"notes",t:"textarea",l:"Steps / SOP"},
+  ]},
+  investment:{l:"Investment",view:"invest",icon:I.invest,fields:[
+    {k:"dir",t:"select",l:"Type",opts:[["raised","Funding we raise"],["invested","Investment we make"]],def:"raised"},
+    {k:"title",t:"text",l:"Name",req:1,ph:"e.g. Seed round, Equipment, Startup X"},
+    {k:"party",t:"text",l:"Investor / company"},
+    {k:"amount",t:"number",l:"Amount",req:1,pair:1},
+    {k:"value",t:"number",l:"Current value (investments we make)",pair:1},
+    {k:"status",t:"select",l:"Status",opts:[["pipeline","In talks"],["committed","Committed"],["closed","Closed / received"]],def:"pipeline",pair:2},
+    {k:"date",t:"date",l:"Date",def:()=>today(),pair:2},
+    {k:"notes",t:"textarea",l:"Terms / notes"},
+  ]},
+};
+const STAGES={
+  feature:[["idea","Idea"],["discovery","Discovery"],["building","Building"],["testing","Testing"],["launched","Launched"]],
+  experiment:[["idea","Idea"],["research","Researching"],["prototype","Prototyping"],["validated","Validated"],["dropped","Dropped"]],
+  task:[["todo","To do"],["doing","In progress"],["done","Done"]],
+};
+const VIEWS=[
+  {id:"overview",l:"Overview",icon:I.home,grp:"Command"},
+  {id:"plans",l:"Plans",icon:I.plan,kind:"plan"},
+  {id:"tasks",l:"Tasks",icon:I.task,kind:"task"},
+  {id:"targets",l:"Targets",icon:I.target,kind:"target"},
+  {id:"hishab",l:"Hishab",icon:I.wallet,kind:"txn",grp:"Money"},
+  {id:"invest",l:"Investment",icon:I.invest,kind:"investment"},
+  {id:"projects",l:"Projects",icon:I.folder,kind:"project",grp:"Build"},
+  {id:"product",l:"Product",icon:I.box,kind:"feature"},
+  {id:"rnd",l:"R&D",icon:I.flask,kind:"experiment"},
+  {id:"ops",l:"Operations",icon:I.ops,kind:"ops"},
+];
+
+/* ---------- store ---------- */
+const Store={
+  recs:new Map(), mode:"pending", col:null, chains:new Map(), queued:new Set(),
+  all(kind){return [...this.recs.values()].filter(r=>r.kind===kind)},
+  get(id){return this.recs.get(id)},
+  save(rec){
+    rec.updatedAt=Date.now(); if(!rec.createdAt) rec.createdAt=rec.updatedAt;
+    this.recs.set(rec.id,rec); this.persist(rec.id); render();
+  },
+  remove(id){this.recs.delete(id); this.persist(id,true); render()},
+  persist(id,del){
+    if(this.mode==="db"){
+      const run=()=>{const ref=this.col.doc(id);const r=this.recs.get(id);return del||!r?ref.delete():ref.set(JSON.parse(JSON.stringify(r)))};
+      const p=(this.chains.get(id)||Promise.resolve()).then(run).catch(e=>{
+        if(e&&e.code==="unavailable") return new Promise(r=>setTimeout(r,600+Math.random()*600)).then(run);
+        throw e;
+      }).catch(e=>toast(e&&e.code==="quota_exceeded"?"Storage is full. Delete old entries to add more.":"Couldn't save. Check your connection and try again."));
+      this.chains.set(id,p);
+    } else if(this.mode==="local"){ this.saveLocal(); }
+    else this.queued.add(id);
+  },
+  saveLocal(){try{localStorage.setItem("hishabhq.v1",JSON.stringify([...this.recs.values()]))}catch(e){}},
+  loadLocal(){try{const a=JSON.parse(localStorage.getItem("hishabhq.v1")||"[]");a.forEach(r=>this.recs.set(r.id,r))}catch(e){}},
+};
+const settings=()=>Store.get("settings")||{id:"settings",kind:"settings",currency:"BDT",style:"lakh"};
+const CUR={BDT:"৳",USD:"$",EUR:"€",INR:"₹",GBP:"£"};
+function money(n,compact){
+  n=+n||0; const s=settings(), sym=CUR[s.currency]||"", neg=n<0?"−":""; n=Math.abs(n);
+  if(compact){
+    const L=s.style==="lakh";
+    const steps=L?[[1e7,"Cr"],[1e5,"L"],[1e3,"K"]]:[[1e9,"B"],[1e6,"M"],[1e3,"K"]];
+    for(const[v,u]of steps) if(n>=v){const x=n/v;return neg+sym+(x>=100?Math.round(x):+x.toFixed(x>=10?1:2))+u}
+  }
+  return neg+sym+new Intl.NumberFormat(s.style==="lakh"?"en-IN":"en-US",{maximumFractionDigits:0}).format(n);
+}
+function fmtUnit(t,v,compact){return t.unit==="money"?money(v,compact):t.unit==="percent"?(+v||0)+"%":new Intl.NumberFormat().format(+v||0)}
+
+/* ---------- derived ---------- */
+const chip=a=>{const x=AREAS[a];return x?`<span class="chip" style="--c:${x.c}">${esc(x.l)}</span>`:""};
+const dueTxt=(s,done)=>{if(!s)return"";const d=days(s);let c="";let t=fmtD(s);
+  if(!done){if(d<0){c="over";t=(d===-1?"Yesterday":-d+"d overdue")}else if(d===0){c="soon";t="Today"}else if(d===1){c="soon";t="Tomorrow"}else if(d<=6)c="soon"}
+  return `<span class="due ${c}">${t}</span>`};
+function txnState(t){if(t.status==="done")return"done";return t.date<today()?"overdue":"pending"}
+function targetState(t){
+  const p=t.goal?Math.min(1,(+t.current||0)/t.goal):0;
+  if(p>=1) return {p,pace:1,cls:"good",label:"Hit"};
+  const s=parseD(t.start||iso(new Date(t.createdAt||Date.now()))), e=parseD(t.deadline);
+  let pace=0; if(e&&e>s) pace=Math.max(0,Math.min(1,(parseD(today())-s)/(e-s)));
+  if(e&&parseD(today())>e) return {p,pace:1,cls:"bad",label:"Missed"};
+  if(p>=pace-0.05) return {p,pace,cls:"good",label:"On track"};
+  if(p>=pace-0.2) return {p,pace,cls:"warn",label:"At risk"};
+  return {p,pace,cls:"bad",label:"Behind"};
+}
+function projectProgress(p){const ts=Store.all("task").filter(t=>t.projectId===p.id);if(!ts.length)return{p:(+p.progress||0)/100,n:0,d:0};const d=ts.filter(t=>t.status==="done").length;return{p:d/ts.length,n:ts.length,d}}
+function nextDue(s,f){const d=parseD(s||today());({daily:()=>d.setDate(d.getDate()+1),weekly:()=>d.setDate(d.getDate()+7),monthly:()=>d.setMonth(d.getMonth()+1),quarterly:()=>d.setMonth(d.getMonth()+3),yearly:()=>d.setFullYear(d.getFullYear()+1)})[f||"monthly"]();return iso(d)}
+
+/* ---------- ui state ---------- */
+const ui={view:"overview",taskMode:"board",taskArea:"all",hFilter:"all",planArea:"all",invDir:"all"};
+try{const v=localStorage.getItem("hishabhq.view");if(v&&VIEWS.some(x=>x.id===v))ui.view=v;const m=localStorage.getItem("hishabhq.taskMode");if(m)ui.taskMode=m}catch(e){}
+const h=location.hash.slice(1); if(VIEWS.some(v=>v.id===h)) ui.view=h;
+
+/* ---------- views ---------- */
+function pageHead(title,sub,kind,extra=""){
+  return `<div class="ph"><div><h1>${title}</h1>${sub?`<p>${sub}</p>`:""}</div><div class="tools">${extra}${kind?`<button class="btn" data-act="add" data-kind="${kind}" type="button">${icon(I.plus)}Add ${esc(KINDS[kind].l.toLowerCase())}</button>`:""}</div></div>`;
+}
+const emptyState=(kind,text)=>`<div class="empty"><span>${text}</span><button class="btn sm" data-act="add" data-kind="${kind}" type="button">${icon(I.plus)}Add ${esc(KINDS[kind].l.toLowerCase())}</button></div>`;
+const exampleBanner=()=>[...Store.recs.values()].some(r=>r.example)?`<div class="banner"><span><b>Example data.</b> These entries show how Hishab HQ works. Replace them with your own whenever you're ready.</span><button class="btn sm" data-act="clear-examples" type="button">Clear examples</button></div>`:"";
+
+function inflowRow(t){
+  const st=txnState(t), d=parseD(t.date);
+  return `<div class="row" data-open="${t.id}">
+    <div class="datechip ${st==="overdue"?"over":""}"><b>${d.getDate()}</b><small>${MON[d.getMonth()]}</small></div>
+    <div class="t"><b>${esc(t.title)}</b><div class="meta">${t.party?esc(t.party)+" · ":""}${st==="overdue"?`<span class="due over">${-days(t.date)}d late</span>`:dueTxt(t.date)}</div></div>
+    <span class="amt ${t.dir}">${t.dir==="out"?"−":"+"}${money(t.amount,true)}</span>
+    ${t.status!=="done"?`<button class="btn sm" data-act="recv" data-id="${t.id}" type="button" title="Mark as ${t.dir==="in"?"received":"paid"}">${t.dir==="in"?"Received":"Paid"}</button>`:`<span class="pill good">${t.dir==="in"?"Received":"Paid"}</span>`}
+  </div>`;
+}
+function taskRow(t){
+  const p=t.projectId&&Store.get(t.projectId);
+  return `<div class="row" data-open="${t.id}">
+    <button class="check ${t.status==="done"?"on":""}" data-act="task-toggle" data-id="${t.id}" type="button" aria-label="Mark done">${t.status==="done"?icon(I.check):""}</button>
+    <span class="prio ${t.priority||"med"}" style="margin-top:0"></span>
+    <div class="t"><b class="${t.status==="done"?"done-t":""}">${esc(t.title)}</b><div class="meta">${chip(t.area)}${p?esc(p.title):""}${t.status==="doing"?'<span class="pill acc">In progress</span>':""}</div></div>
+    ${dueTxt(t.due,t.status==="done")}
+  </div>`;
+}
+
+function vOverview(){
+  const t=today(), txns=Store.all("txn"), ins=txns.filter(x=>x.dir==="in"), outs=txns.filter(x=>x.dir==="out");
+  const mk=t.slice(0,7);
+  const recvM=sum(ins.filter(x=>x.status==="done"&&(x.doneOn||x.date).slice(0,7)===mk));
+  const outM=sum(outs.filter(x=>x.status==="done"&&(x.doneOn||x.date).slice(0,7)===mk));
+  const pendIn=ins.filter(x=>x.status!=="done");
+  const exp30=pendIn.filter(x=>x.date>=t&&x.date<=addDays(t,30));
+  const over=pendIn.filter(x=>x.date<t);
+  const tasks=Store.all("task"), open=tasks.filter(x=>x.status!=="done");
+  const overT=open.filter(x=>x.due&&x.due<t);
+  const week=open.filter(x=>x.due&&x.due<=addDays(t,7)).sort((a,b)=>a.due.localeCompare(b.due));
+  const tg=Store.all("target"), tgs=tg.map(x=>({x,s:targetState(x)}));
+  const onTrack=tgs.filter(o=>o.s.cls==="good").length;
+  const upcoming=[...over,...exp30].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,7);
+  const projs=Store.all("project").filter(p=>p.status==="active"||p.status==="planning");
+  const opsDue=Store.all("ops").filter(o=>o.nextDue<=addDays(t,7)).sort((a,b)=>a.nextDue.localeCompare(b.nextDue));
+  const hr=new Date().getHours(), greet=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
+  const dateLong=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const bits=[];
+  if(exp30.length) bits.push(`<b>${money(sum(exp30),true)}</b> expected in the next 30 days`);
+  if(over.length) bits.push(`<b style="color:var(--bad)">${money(sum(over),true)}</b> overdue from ${over.length} ${over.length>1?"payments":"payment"}`);
+  if(week.length) bits.push(`${week.length} ${week.length>1?"tasks":"task"} due this week`);
+  const nothing=Store.recs.size<=1;
+  return `<div class="page">
+    ${exampleBanner()}
+    <div class="ph"><div><div class="eyebrow">${esc(dateLong)}</div><h1>${greet}</h1><p>${bits.length?bits.join(" · ")+".":nothing?"Everything for running the company in one place: plans, tasks, targets, money in and out, projects, product, R&D, ops and investment.":"Nothing urgent. A good day to plan ahead."}</p></div></div>
+    ${nothing?welcome():""}
+    <div class="kpis">
+      <div class="kpi"><span class="l">Received this month</span><span class="v">${money(recvM,true)}</span><span class="s">${outM?"Paid out "+money(outM,true)+" · net "+money(recvM-outM,true):"Money in, marked received"}</span></div>
+      <div class="kpi"><span class="l">Coming in · next 30 days</span><span class="v">${money(sum(exp30),true)}</span><span class="s ${over.length?"bad":""}">${over.length?money(sum(over),true)+" overdue":exp30.length+" expected payments"}</span></div>
+      <div class="kpi"><span class="l">Open tasks</span><span class="v">${open.length}</span><span class="s ${overT.length?"bad":"good"}">${overT.length?overT.length+" overdue":"None overdue"}</span></div>
+      <div class="kpi"><span class="l">Targets on track</span><span class="v">${tg.length?onTrack+"/"+tg.length:"—"}</span><span class="s ${tg.length&&onTrack<tg.length?"warn":""}">${tg.length?(tg.length-onTrack)+" need attention":"Set your first target"}</span></div>
+    </div>
+    <div class="grid2">
+      <section class="card"><header><h2>Kokhon ki ashbe · coming in</h2><button class="btn ghost sm more" data-act="go" data-view="hishab" type="button">Hishab →</button></header>
+        <div class="body"><div class="rows">${upcoming.map(inflowRow).join("")||emptyState("txn","No expected payments yet. Add an invoice or expected payment to see when money arrives.")}</div></div></section>
+      <section class="card"><header><h2>Due this week</h2><button class="btn ghost sm more" data-act="go" data-view="tasks" type="button">Tasks →</button></header>
+        <div class="body"><div class="rows">${week.slice(0,7).map(taskRow).join("")||emptyState("task","Nothing due in the next 7 days.")}</div></div></section>
+    </div>
+    <div class="grid2">
+      <section class="card"><header><h2>Targets</h2><button class="btn ghost sm more" data-act="go" data-view="targets" type="button">All targets →</button></header>
+        <div class="body"><div class="rows">${tgs.sort((a,b)=>(a.x.deadline||"").localeCompare(b.x.deadline||"")).slice(0,5).map(({x,s})=>`
+          <div class="row" data-open="${x.id}" style="flex-direction:column;align-items:stretch;gap:7px">
+            <div style="display:flex;gap:10px;align-items:center"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.title)}</b><span class="pill ${s.cls}">${s.label}</span></div>
+            <div class="bar"><i class="${s.cls}" style="width:${s.p*100}%"></i>${s.pace<1?`<em style="left:${s.pace*100}%"></em>`:""}</div>
+            <div class="meta"><span class="num">${fmtUnit(x,x.current,true)} / ${fmtUnit(x,x.goal,true)}</span>${x.deadline?"· by "+fmtD(x.deadline):""}</div>
+          </div>`).join("")||emptyState("target","No targets yet. Set a revenue, sales or growth target to track pace.")}</div></div></section>
+      <section class="card"><header><h2>Active projects</h2><button class="btn ghost sm more" data-act="go" data-view="projects" type="button">Projects →</button></header>
+        <div class="body"><div class="rows">${projs.slice(0,5).map(p=>{const pr=projectProgress(p);return `
+          <div class="row" data-open="${p.id}" style="flex-direction:column;align-items:stretch;gap:7px">
+            <div style="display:flex;gap:10px;align-items:center"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.title)}</b>${dueTxt(p.end)}</div>
+            <div class="bar"><i style="width:${pr.p*100}%"></i></div>
+            <div class="meta">${chip(p.area)}<span class="num">${Math.round(pr.p*100)}%</span>${pr.n?`· ${pr.d}/${pr.n} tasks`:""}${p.client?" · "+esc(p.client):""}</div>
+          </div>`}).join("")||emptyState("project","No active projects.")}</div></div></section>
+    </div>
+    <div class="grid3">
+      <section class="card"><header><h2>Ops this week</h2><button class="btn ghost sm more" data-act="go" data-view="ops" type="button">→</button></header>
+        <div class="body"><div class="rows">${opsDue.slice(0,5).map(opsRow).join("")||`<div class="empty">No routines due this week.</div>`}</div></div></section>
+      <section class="card"><header><h2>Product pipeline</h2><button class="btn ghost sm more" data-act="go" data-view="product" type="button">→</button></header>
+        <div class="body">${pipeline("feature")}</div></section>
+      <section class="card"><header><h2>R&amp;D pipeline</h2><button class="btn ghost sm more" data-act="go" data-view="rnd" type="button">→</button></header>
+        <div class="body">${pipeline("experiment")}</div></section>
+    </div>
+  </div>`;
+}
+function welcome(){return `<section class="card welcome"><span class="eyebrow">Start here</span><h2>Set up your company in four steps</h2>
+  <p>Add a plan for each part of the business, set targets, log the payments you expect (with dates, so you can see what arrives when), and break the work into tasks. Everything saves automatically.</p>
+  <div class="toolbar">${["plan","target","txn","task"].map(k=>`<button class="btn" data-act="add" data-kind="${k}" type="button">${icon(KINDS[k].icon)}${esc(KINDS[k].l)}</button>`).join("")}</div></section>`}
+function pipeline(kind){
+  const all=Store.all(kind); if(!all.length) return `<div class="empty">Nothing here yet.</div>`;
+  const max=Math.max(1,...STAGES[kind].map(([k])=>all.filter(x=>x.stage===k).length));
+  return `<div class="mini">${STAGES[kind].map(([k,l])=>{const n=all.filter(x=>x.stage===k).length;return `<div class="lrow"><span>${l}</span><div class="bar"><i style="width:${n/max*100}%"></i></div><span>${n}</span></div>`}).join("")}</div>`;
+}
+
+function vPlans(){
+  const plans=Store.all("plan").filter(p=>ui.planArea==="all"||p.area===ui.planArea);
+  const hz={quarter:"This quarter",half:"Next 6 months",year:"This year",long:"3+ years"};
+  const usedAreas=[...new Set(Store.all("plan").map(p=>p.area))];
+  return `<div class="page">${exampleBanner()}
+    ${pageHead("Plans","A separate plan for each part of the company: business, R&amp;D, product, operations, investment. Each one holds its objectives.","plan")}
+    ${usedAreas.length>1?`<div class="filters">${["all",...usedAreas].map(a=>`<button class="fchip" type="button" data-act="plan-area" data-v="${a}" aria-pressed="${ui.planArea===a}">${a==="all"?"All areas":esc(AREAS[a]?.l||a)}</button>`).join("")}</div>`:""}
+    <div class="cards">${plans.sort((a,b)=>(a.status==="done")-(b.status==="done")).map(p=>{
+      const ob=p.objectives||[], d=ob.filter(o=>o.done).length;
+      return `<article class="card tgt" data-open="${p.id}">
+        <div class="meta">${chip(p.area)}<span class="pill ${p.status==="active"?"acc":p.status==="done"?"good":""}">${p.status==="active"?"Active":p.status==="done"?"Completed":"Draft"}</span><span style="margin-left:auto">${esc(hz[p.horizon]||"")}</span></div>
+        <h3>${esc(p.title)}</h3>
+        ${p.summary?`<p style="margin:0;color:var(--muted);font-size:14px">${esc(p.summary)}</p>`:""}
+        ${ob.length?`<div>${ob.map((o,i)=>`<div class="obj"><button class="check ${o.done?"on":""}" type="button" data-act="obj-toggle" data-id="${p.id}" data-i="${i}" aria-label="Toggle objective">${o.done?icon(I.check):""}</button><span class="${o.done?"done-t":""}">${esc(o.text)}</span></div>`).join("")}</div>
+        <div class="bar"><i class="${d===ob.length?"good":""}" style="width:${d/ob.length*100}%"></i></div><div class="meta"><span class="num">${d}/${ob.length}</span> objectives done</div>`:`<div class="meta">No objectives yet</div>`}
+      </article>`}).join("")}</div>
+    ${plans.length?"":`<div class="card">${emptyState("plan","No plans yet. Start with this quarter's business plan, then add R&amp;D, product and ops plans.")}</div>`}
+  </div>`;
+}
+
+function taskCard(t){
+  const p=t.projectId&&Store.get(t.projectId);
+  return `<div class="tcard" draggable="true" data-drag="${t.id}" data-open="${t.id}">
+    <div class="tt"><span class="prio ${t.priority||"med"}"></span><span class="${t.status==="done"?"done-t":""}">${esc(t.title)}</span></div>
+    <div class="meta">${chip(t.area)}${dueTxt(t.due,t.status==="done")}${p?`<span>${esc(p.title)}</span>`:""}</div></div>`;
+}
+function vTasks(){
+  let ts=Store.all("task"); if(ui.taskArea!=="all") ts=ts.filter(t=>t.area===ui.taskArea);
+  const pr={high:0,med:1,low:2};
+  ts.sort((a,b)=>(pr[a.priority]??1)-(pr[b.priority]??1)||(a.due||"9").localeCompare(b.due||"9"));
+  const filters=`<div class="filters">${["all",...Object.keys(AREAS)].map(a=>`<button class="fchip" type="button" data-act="task-area" data-v="${a}" aria-pressed="${ui.taskArea===a}">${a==="all"?"All":esc(AREAS[a].l)}</button>`).join("")}</div>`;
+  const mode=`<div class="seg"><button type="button" data-act="task-mode" data-v="board" aria-pressed="${ui.taskMode==="board"}">Board</button><button type="button" data-act="task-mode" data-v="list" aria-pressed="${ui.taskMode==="list"}">List</button></div>`;
+  let body;
+  if(ui.taskMode==="board") body=board("task","status",ts,taskCard);
+  else{
+    const t=today(), g=[["Overdue",x=>x.status!=="done"&&x.due&&x.due<t,"bad"],["Today",x=>x.status!=="done"&&x.due===t],["Next 7 days",x=>x.status!=="done"&&x.due>t&&x.due<=addDays(t,7)],["Later",x=>x.status!=="done"&&x.due>addDays(t,7)],["No date",x=>x.status!=="done"&&!x.due],["Done",x=>x.status==="done"]];
+    body=`<section class="card"><div class="body">${g.map(([l,f,c])=>{const a=ts.filter(f);return a.length?`<div class="bucket ${c||""}">${l}<span>${a.length}</span></div><div class="rows">${a.map(taskRow).join("")}</div>`:""}).join("")||emptyState("task","No tasks here.")}</div></section>`;
+  }
+  return `<div class="page">${exampleBanner()}${pageHead("Tasks","Every task across business, ops, R&amp;D, product and projects. Drag cards between columns to update them.","task",mode)}${filters}${body}</div>`;
+}
+function board(kind,field,items,card){
+  return `<div class="board">${STAGES[kind].map(([k,l])=>{const a=items.filter(x=>(x[field]||STAGES[kind][0][0])===k);return `<div class="col" data-drop="${field}" data-v="${k}">
+    <h3>${l}<span>${a.length}</span><button class="iconbtn add" type="button" data-act="add" data-kind="${kind}" data-def='${esc(JSON.stringify({[field]:k}))}' aria-label="Add to ${l}">${icon(I.plus)}</button></h3>${a.map(card).join("")}</div>`}).join("")}</div>`;
+}
+
+function vTargets(){
+  const tg=Store.all("target").map(x=>({x,s:targetState(x)})).sort((a,b)=>(a.x.deadline||"").localeCompare(b.x.deadline||""));
+  return `<div class="page">${exampleBanner()}${pageHead("Targets","Revenue, sales, growth and delivery targets. The tick on each bar shows where you should be today if you're on pace.","target")}
+  <div class="cards">${tg.map(({x,s})=>`<article class="card tgt" data-open="${x.id}">
+    <div class="meta">${chip(x.area)}<span class="pill ${s.cls}">${s.label}</span><span style="margin-left:auto">${x.deadline?(days(x.deadline)>=0?days(x.deadline)+" days left":"Ended "+fmtD(x.deadline)):""}</span></div>
+    <h3>${esc(x.title)}</h3>
+    <div class="big"><b>${fmtUnit(x,x.current,true)}</b><span>of ${fmtUnit(x,x.goal,true)} · ${Math.round(s.p*100)}%</span></div>
+    <div class="bar"><i class="${s.cls}" style="width:${s.p*100}%"></i>${s.pace<1&&s.pace>0?`<em style="left:${s.pace*100}%" title="Expected pace today"></em>`:""}</div>
+    <div class="meta"><label for="cur_${x.id}">Update now</label><input class="inline-num" id="cur_${x.id}" type="number" step="any" data-cur="${x.id}" value="${+x.current||0}"><span style="margin-left:auto">${s.pace<1&&s.pace>0?"Pace today: "+fmtUnit(x,Math.round(x.goal*s.pace),true):""}</span></div>
+  </article>`).join("")}</div>${tg.length?"":`<div class="card">${emptyState("target","No targets yet.")}</div>`}</div>`;
+}
+
+function cashChart(){
+  const now=new Date(), ms=[];for(let i=-2;i<=3;i++){const m=new Date(now.getFullYear(),now.getMonth()+i,1);ms.push(m.getFullYear()+"-"+pad(m.getMonth()+1))}
+  const txns=Store.all("txn"), key=x=>(x.status==="done"?(x.doneOn||x.date):x.date).slice(0,7);
+  const data=ms.map(m=>{const a=txns.filter(x=>key(x)===m);return{m,recv:sum(a.filter(x=>x.dir==="in"&&x.status==="done")),exp:sum(a.filter(x=>x.dir==="in"&&x.status!=="done")),out:sum(a.filter(x=>x.dir==="out"))}});
+  const max=Math.max(1,...data.map(d=>Math.max(d.recv+d.exp,d.out)));
+  const mag=Math.pow(10,Math.floor(Math.log10(max))), nice=[1,2,2.5,5,10].map(f=>f*mag).find(v=>v*4>=max)*4||max;
+  const W=680,H=250,pl=58,pr=10,pt=12,pb=30,gw=(W-pl-pr)/ms.length,bw=Math.min(28,gw*.28),y=v=>pt+(H-pt-pb)*(1-v/nice);
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Money in and out by month">`;
+  const cm=today().slice(0,7), ci=ms.indexOf(cm);
+  s+=`<rect class="curband" x="${pl+ci*gw}" y="${pt}" width="${gw}" height="${H-pt-pb}" rx="6"/>`;
+  for(let i=0;i<=4;i++){const v=nice*i/4;s+=`<line class="grid" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end">${esc(money(v,true))}</text>`}
+  data.forEach((d,i)=>{const cx=pl+gw*i+gw/2,x1=cx-bw-2,x2=cx+2;
+    s+=`<rect class="recv" x="${x1}" y="${y(d.recv)}" width="${bw}" height="${y(0)-y(d.recv)}" rx="3"><title>Received ${esc(money(d.recv))}</title></rect>`;
+    s+=`<rect class="exp" x="${x1}" y="${y(d.recv+d.exp)}" width="${bw}" height="${y(0)-y(d.exp)}" rx="3"><title>Expected ${esc(money(d.exp))}</title></rect>`;
+    s+=`<rect class="out" x="${x2}" y="${y(d.out)}" width="${bw}" height="${y(0)-y(d.out)}" rx="3"><title>Out ${esc(money(d.out))}</title></rect>`;
+    const [yy,mm]=d.m.split("-");s+=`<text class="${d.m===cm?"cur":""}" x="${cx}" y="${H-10}" text-anchor="middle">${MON[+mm-1]}${mm==="01"?" "+yy.slice(2):""}</text>`});
+  return s+"</svg>";
+}
+function vHishab(){
+  const t=today(), txns=Store.all("txn"), ins=txns.filter(x=>x.dir==="in"), outs=txns.filter(x=>x.dir==="out");
+  const pendIn=ins.filter(x=>x.status!=="done"), pendOut=outs.filter(x=>x.status!=="done");
+  const over=pendIn.filter(x=>x.date<t), mk=t.slice(0,7);
+  const recvM=sum(ins.filter(x=>x.status==="done"&&(x.doneOn||x.date).slice(0,7)===mk));
+  const B=[["Overdue",x=>x.date<t,"bad"],["This week",x=>x.date>=t&&x.date<=addDays(t,6)],["Next week",x=>x.date>addDays(t,6)&&x.date<=addDays(t,13)],["Later this month",x=>x.date>addDays(t,13)&&x.date.slice(0,7)===mk],["Next 3 months",x=>x.date>addDays(t,13)&&x.date.slice(0,7)>mk&&x.date<=addDays(t,92)],["Later",x=>x.date>addDays(t,92)]];
+  const timeline=(arr)=>B.map(([l,f,c])=>{const a=arr.filter(f).sort((p,q)=>p.date.localeCompare(q.date));return a.length?`<div class="bucket ${c||""}">${l}<span>${money(sum(a),true)}</span></div><div class="rows">${a.map(inflowRow).join("")}</div>`:""}).join("");
+  const F={all:()=>1,in:x=>x.dir==="in",out:x=>x.dir==="out",pending:x=>x.status!=="done",overdue:x=>txnState(x)==="overdue"};
+  const list=txns.filter(F[ui.hFilter]).sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div class="page">${exampleBanner()}${pageHead("Hishab","Money in and money out, with dates, so you always know what arrives when (kokhon konta ashtese) and what's still owed.","txn")}
+  <div class="kpis">
+    <div class="kpi"><span class="l">Received this month</span><span class="v">${money(recvM,true)}</span><span class="s">${ins.filter(x=>x.status==="done"&&(x.doneOn||x.date).slice(0,7)===mk).length} payments</span></div>
+    <div class="kpi"><span class="l">Still to come in</span><span class="v">${money(sum(pendIn),true)}</span><span class="s">${pendIn.length} pending</span></div>
+    <div class="kpi"><span class="l">Overdue</span><span class="v" style="${over.length?"color:var(--bad)":""}">${money(sum(over),true)}</span><span class="s ${over.length?"bad":"good"}">${over.length?over.length+" late, chase these":"Nobody is late"}</span></div>
+    <div class="kpi"><span class="l">Bills to pay</span><span class="v">${money(sum(pendOut),true)}</span><span class="s">${pendOut.length} upcoming outflows</span></div>
+  </div>
+  <div class="grid2" style="grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)">
+    <section class="card"><header><h2>Cash by month</h2></header><div class="body" style="display:flex;flex-direction:column;gap:10px">
+      <div class="legend"><span><i style="background:var(--good)"></i>Received</span><span><i style="background:color-mix(in oklab,var(--good) 35%,var(--surface))"></i>Expected</span><span><i style="background:color-mix(in oklab,var(--bad) 70%,var(--surface))"></i>Money out</span></div>
+      ${cashChart()}</div></section>
+    <section class="card"><header><h2>Kokhon ki ashbe</h2></header><div class="body" style="max-height:420px;overflow-y:auto">${timeline(pendIn)||`<div class="empty">No pending payments.</div>`}</div></section>
+  </div>
+  <section class="card"><header><h2>All entries</h2><div class="filters more">${[["all","All"],["in","Money in"],["out","Money out"],["pending","Pending"],["overdue","Overdue"]].map(([k,l])=>`<button class="fchip" type="button" data-act="h-filter" data-v="${k}" aria-pressed="${ui.hFilter===k}">${l}</button>`).join("")}</div></header>
+    <div class="body tablewrap">${list.length?`<table><thead><tr><th>Date</th><th>Description</th><th>Client / payee</th><th>Category</th><th>Status</th><th class="r">Amount</th></tr></thead><tbody>${list.map(x=>{const st=txnState(x);return `<tr data-open="${x.id}"><td class="num" style="white-space:nowrap">${fmtD(x.status==="done"?(x.doneOn||x.date):x.date)}</td><td><b style="font-weight:600">${esc(x.title)}</b></td><td>${esc(x.party||"")}</td><td style="color:var(--muted)">${esc(x.category||"")}</td><td><span class="pill ${st==="done"?"good":st==="overdue"?"bad":"warn"}">${st==="done"?(x.dir==="in"?"Received":"Paid"):st==="overdue"?"Overdue":(x.dir==="in"?"Expected":"To pay")}</span></td><td class="r amt ${x.dir} num">${x.dir==="out"?"−":"+"}${money(x.amount)}</td></tr>`}).join("")}</tbody></table>`:emptyState("txn","No entries match.")}</div></section>
+  </div>`;
+}
+
+function vProjects(){
+  const ps=Store.all("project"), order={active:0,planning:1,hold:2,done:3};
+  ps.sort((a,b)=>order[a.status]-order[b.status]||(a.end||"9").localeCompare(b.end||"9"));
+  const lbl={active:["Active","acc"],planning:["Planning",""],hold:["On hold","warn"],done:["Delivered","good"]};
+  return `<div class="page">${exampleBanner()}${pageHead("Projects","Deadlines, budgets and progress. Progress comes from the project's tasks when it has any.","project")}
+  <div class="cards">${ps.map(p=>{const pr=projectProgress(p),bu=+p.budget||0,sp=+p.spent||0,[l,c]=lbl[p.status]||["",""];return `<article class="card tgt" data-open="${p.id}">
+    <div class="meta">${chip(p.area)}<span class="pill ${c}">${l}</span><span style="margin-left:auto">${p.end?dueTxt(p.end,p.status==="done"):""}</span></div>
+    <h3>${esc(p.title)}</h3>
+    <div class="meta">${[p.client,p.owner&&"Owner: "+p.owner].filter(Boolean).map(esc).join(" · ")}</div>
+    <div style="display:flex;flex-direction:column;gap:6px"><div class="meta"><span>Progress</span><span class="num" style="margin-left:auto">${Math.round(pr.p*100)}%${pr.n?` · ${pr.d}/${pr.n} tasks`:""}</span></div><div class="bar"><i class="${pr.p>=1?"good":""}" style="width:${pr.p*100}%"></i></div></div>
+    ${bu?`<div style="display:flex;flex-direction:column;gap:6px"><div class="meta"><span>Budget</span><span class="num" style="margin-left:auto">${money(sp,true)} / ${money(bu,true)}</span></div><div class="bar"><i class="${sp>bu?"bad":sp>bu*.85?"warn":"good"}" style="width:${Math.min(100,sp/bu*100)}%"></i></div></div>`:""}
+    <button class="btn sm" style="align-self:flex-start" type="button" data-act="add" data-kind="task" data-def='${esc(JSON.stringify({projectId:p.id,area:p.area}))}'>${icon(I.plus)}Task</button>
+  </article>`}).join("")}</div>${ps.length?"":`<div class="card">${emptyState("project","No projects yet.")}</div>`}</div>`;
+}
+
+const dots=(n,l)=>`<span class="meta" title="${l} ${n}/5">${l}<span class="dots">${[1,2,3,4,5].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</span></span>`;
+function vProduct(){
+  const fs=Store.all("feature").sort((a,b)=>(b.impact/b.effort)-(a.impact/a.effort));
+  return `<div class="page">${exampleBanner()}${pageHead("Product","Your product roadmap from idea to launch. Higher impact for lower effort sorts to the top.","feature")}
+  ${board("feature","stage",fs,f=>`<div class="tcard" draggable="true" data-drag="${f.id}" data-open="${f.id}"><div class="tt"><span>${esc(f.title)}</span></div>
+   <div class="meta">${f.product?`<span class="pill">${esc(f.product)}</span>`:""}${f.quarter?`<span>${esc(f.quarter)}</span>`:""}</div><div class="meta">${dots(+f.impact||3,"Impact")}${dots(+f.effort||3,"Effort")}</div></div>`)}</div>`;
+}
+function vRnd(){
+  const ex=Store.all("experiment");
+  return `<div class="page">${exampleBanner()}${pageHead("R&amp;D","Research and experiments, kept separate from delivery work. Each one starts from a hypothesis and ends validated or dropped.","experiment")}
+  ${board("experiment","stage",ex,e=>`<div class="tcard" draggable="true" data-drag="${e.id}" data-open="${e.id}"><div class="tt"><span>${esc(e.title)}</span></div>
+   ${e.hypothesis?`<div style="font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(e.hypothesis)}</div>`:""}
+   <div class="meta">${e.owner?esc(e.owner):""}${e.due?dueTxt(e.due,e.stage==="validated"||e.stage==="dropped"):""}${+e.budget?`<span class="num" style="margin-left:auto">${money(+e.spent||0,true)}/${money(e.budget,true)}</span>`:""}</div></div>`)}</div>`;
+}
+const FREQ={daily:"Daily",weekly:"Weekly",monthly:"Monthly",quarterly:"Quarterly",yearly:"Yearly"};
+function opsRow(o){return `<div class="row" data-open="${o.id}"><div class="t"><b>${esc(o.title)}</b><div class="meta"><span class="pill">${FREQ[o.freq]||""}</span>${o.owner?esc(o.owner):""}${o.lastDone?"· last done "+fmtD(o.lastDone):""}</div></div>${dueTxt(o.nextDue)}<button class="btn sm" type="button" data-act="ops-done" data-id="${o.id}">Done</button></div>`}
+function vOps(){
+  const t=today(), os=Store.all("ops").sort((a,b)=>a.nextDue.localeCompare(b.nextDue));
+  const g=[["Overdue",o=>o.nextDue<t,"bad"],["Today",o=>o.nextDue===t],["This week",o=>o.nextDue>t&&o.nextDue<=addDays(t,7)],["Later",o=>o.nextDue>addDays(t,7)]];
+  return `<div class="page">${exampleBanner()}${pageHead("Operations","Recurring routines that keep the company running. Press Done and the next due date moves forward on its own.","ops")}
+  <section class="card"><div class="body">${g.map(([l,f,c])=>{const a=os.filter(f);return a.length?`<div class="bucket ${c||""}">${l}<span>${a.length}</span></div><div class="rows">${a.map(opsRow).join("")}</div>`:""}).join("")||emptyState("ops","No routines yet. Add salary runs, tax filings, backups, stock checks.")}</div></section></div>`;
+}
+function vInvest(){
+  const all=Store.all("investment"), raised=all.filter(x=>x.dir==="raised"), inv=all.filter(x=>x.dir==="invested");
+  const closed=sum(raised.filter(x=>x.status==="closed")), committed=sum(raised.filter(x=>x.status==="committed")), pipe=sum(raised.filter(x=>x.status==="pipeline"));
+  const put=sum(inv), val=sum(inv,x=>+(x.value??x.amount)||0), roi=put?(val-put)/put:0;
+  const st={pipeline:["In talks","warn"],committed:["Committed","acc"],closed:["Closed","good"]};
+  const tbl=(a,isInv)=>a.length?`<table><thead><tr><th>Name</th><th>${isInv?"Company":"Investor"}</th><th>Status</th><th>Date</th><th class="r">Amount</th>${isInv?'<th class="r">Value now</th>':""}</tr></thead><tbody>${a.sort((p,q)=>(q.date||"").localeCompare(p.date||"")).map(x=>`<tr data-open="${x.id}"><td><b style="font-weight:600">${esc(x.title)}</b></td><td>${esc(x.party||"")}</td><td><span class="pill ${st[x.status]?.[1]||""}">${st[x.status]?.[0]||""}</span></td><td class="num">${fmtD(x.date)}</td><td class="r num">${money(x.amount)}</td>${isInv?`<td class="r num ${(+x.value||0)>=(+x.amount)?"amt in":"amt out"}">${money(x.value??x.amount)}</td>`:""}</tr>`).join("")}</tbody></table>`:"";
+  return `<div class="page">${exampleBanner()}${pageHead("Investment","Funding you raise and investments you make, with status and current value.","investment")}
+  <div class="kpis">
+    <div class="kpi"><span class="l">Funding received</span><span class="v">${money(closed,true)}</span><span class="s">${money(committed,true)} committed</span></div>
+    <div class="kpi"><span class="l">In talks</span><span class="v">${money(pipe,true)}</span><span class="s">${raised.filter(x=>x.status==="pipeline").length} conversations</span></div>
+    <div class="kpi"><span class="l">We invested</span><span class="v">${money(put,true)}</span><span class="s">${inv.length} positions</span></div>
+    <div class="kpi"><span class="l">Portfolio value</span><span class="v">${money(val,true)}</span><span class="s ${roi>=0?"good":"bad"}">${put?(roi>=0?"+":"")+(roi*100).toFixed(1)+"% return":"—"}</span></div>
+  </div>
+  <section class="card"><header><h2>Funding we raise</h2><button class="btn ghost sm more" type="button" data-act="add" data-kind="investment" data-def='{"dir":"raised"}'>${icon(I.plus)}Add</button></header><div class="body tablewrap">${tbl(raised,0)||`<div class="empty">No fundraising tracked yet.</div>`}</div></section>
+  <section class="card"><header><h2>Investments we make</h2><button class="btn ghost sm more" type="button" data-act="add" data-kind="investment" data-def='{"dir":"invested","status":"closed"}'>${icon(I.plus)}Add</button></header><div class="body tablewrap">${tbl(inv,1)||`<div class="empty">No investments tracked yet.</div>`}</div></section>
+  </div>`;
+}
+const RENDER={overview:vOverview,plans:vPlans,tasks:vTasks,targets:vTargets,hishab:vHishab,projects:vProjects,product:vProduct,rnd:vRnd,ops:vOps,invest:vInvest};
+
+/* ---------- render ---------- */
+function renderNav(){
+  const t=today(); const badge={
+    tasks:Store.all("task").filter(x=>x.status!=="done").length,
+    hishab:Store.all("txn").filter(x=>x.status!=="done"&&x.dir==="in"&&x.date<t).length||"",
+    ops:Store.all("ops").filter(x=>x.nextDue<=t).length||"",
+  };
+  $("#nav").innerHTML=VIEWS.map(v=>`${v.grp?`<div class="grp">${v.grp}</div>`:""}<button type="button" data-act="go" data-view="${v.id}" ${ui.view===v.id?'aria-current="page"':""}>${icon(v.icon)}${v.l}<span class="count">${badge[v.id]||(v.kind&&v.id!=="tasks"?Store.all(v.kind).length||"":"")}</span></button>`).join("");
+}
+let rafR=0;
+function render(){if(rafR)return;rafR=requestAnimationFrame(()=>{rafR=0;const sc=$("#main").scrollTop;renderNav();$("#view").innerHTML=RENDER[ui.view]();$("#main").scrollTop=sc;})}
+function go(v){ui.view=v;try{localStorage.setItem("hishabhq.view",v)}catch(e){}$("#main").scrollTop=0;render()}
+
+/* ---------- drawer ---------- */
+let drawerRec=null;
+function openDrawer(kind,id,defs){
+  const K=KINDS[kind]; if(!K) return;
+  const rec=id?JSON.parse(JSON.stringify(Store.get(id))):{id:uid(),kind};
+  if(!id){K.fields.forEach(f=>{if(f.def!==undefined)rec[f.k]=typeof f.def==="function"?f.def():f.def});Object.assign(rec,defs||{})}
+  drawerRec={rec,isNew:!id};
+  const groups=[];K.fields.forEach(f=>{const last=groups[groups.length-1];if(f.pair&&last&&last.pair===f.pair)last.items.push(f);else groups.push({pair:f.pair,items:[f]})});
+  const fh=f=>{const v=rec[f.k]??"", fid="f_"+f.k;let c;
+    if(f.t==="textarea") c=`<textarea id="${fid}" name="${f.k}" placeholder="${esc(f.ph||"")}">${esc(v)}</textarea>`;
+    else if(f.t==="lines") c=`<textarea id="${fid}" name="${f.k}" rows="5">${esc((rec.objectives||[]).map(o=>o.text).join("\n"))}</textarea>`;
+    else if(f.t==="select") c=`<select id="${fid}" name="${f.k}">${f.opts.map(([k,l])=>`<option value="${esc(k)}" ${String(v)===k?"selected":""}>${esc(l)}</option>`).join("")}</select>`;
+    else if(f.t==="project") c=`<select id="${fid}" name="${f.k}"><option value="">No project</option>${Store.all("project").map(p=>`<option value="${p.id}" ${v===p.id?"selected":""}>${esc(p.title)}</option>`).join("")}</select>`;
+    else c=`<input id="${fid}" name="${f.k}" type="${f.t==="number"?"number":f.t==="date"?"date":"text"}" ${f.t==="number"?'step="any" inputmode="decimal"':""} value="${esc(v)}" placeholder="${esc(f.ph||"")}" ${f.req?"required":""} autocomplete="off">`;
+    return `<div class="f ${f.k==="title"?"title":""}"><label for="${fid}">${esc(f.l)}${f.req?"":""}</label>${c}${f.hint?`<span class="hint">${esc(f.hint)}</span>`:""}</div>`};
+  const edited=!drawerRec.isNew&&rec.updatedAt?`Edited ${ago(rec.updatedAt)}`:"";
+  $("#drawer").innerHTML=`<header>${icon(K.icon)}<h2>${drawerRec.isNew?"New "+esc(K.l.toLowerCase()):esc(K.l)}</h2><span class="meta">${edited}</span><button class="iconbtn" type="button" data-act="close" aria-label="Close">${icon(I.x)}</button></header>
+  <form id="dform" novalidate>${groups.map(g=>g.items.length>1?`<div class="fpair">${g.items.map(fh).join("")}</div>`:fh(g.items[0])).join("")}<p id="ferr" class="hint" style="color:var(--bad);margin:0" hidden></p></form>
+  <footer>${drawerRec.isNew?"":`<button class="btn danger" type="button" data-act="del" id="delBtn">Delete</button>`}<div class="spacer"></div><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit" form="dform">${drawerRec.isNew?"Add":"Save"}</button></footer>`;
+  $("#drawer").classList.add("on");$("#drawer").setAttribute("aria-hidden","false");$("#scrim").classList.add("on");
+  setTimeout(()=>{const el=$("#f_title");if(el){el.focus();if(!drawerRec.isNew)el.setSelectionRange(el.value.length,el.value.length)}},60);
+}
+function closeDrawer(){$("#drawer").classList.remove("on");$("#drawer").setAttribute("aria-hidden","true");$("#scrim").classList.remove("on");drawerRec=null}
+function ago(t){const s=(Date.now()-t)/1e3;if(s<60)return"just now";if(s<3600)return Math.round(s/60)+"m ago";if(s<86400)return Math.round(s/3600)+"h ago";return Math.round(s/86400)+"d ago"}
+function submitDrawer(e){
+  e.preventDefault(); const {rec}=drawerRec, K=KINDS[rec.kind], fd=new FormData($("#dform"));
+  for(const f of K.fields){const raw=(fd.get(f.k)??"").toString();
+    if(f.req&&!raw.trim()){const er=$("#ferr");er.textContent=`Add ${f.l.toLowerCase()} to save.`;er.hidden=false;$("#f_"+f.k).focus();return}
+    if(f.t==="number") rec[f.k]=raw===""?null:parseFloat(raw);
+    else if(f.t==="lines"){const old=rec.objectives||[];rec.objectives=raw.split("\n").map(s=>s.trim()).filter(Boolean).map(text=>({text,done:!!old.find(o=>o.text===text&&o.done)}))}
+    else rec[f.k]=raw.trim();
+  }
+  if(rec.kind==="txn"){if(rec.status==="done"&&!rec.doneOn)rec.doneOn=today();if(rec.status!=="done")delete rec.doneOn}
+  if(rec.kind==="task"&&rec.status==="done"&&!rec.doneOn)rec.doneOn=today();
+  delete rec.example;
+  const isNew=drawerRec.isNew; Store.save(rec); closeDrawer(); toast(isNew?`${K.l} added`:"Saved");
+}
+
+/* ---------- palette & menu ---------- */
+let palSel=0,palItems=[];
+function openPalette(){
+  closeMenu(); let el=$("#pal"); if(el) return;
+  el=document.createElement("div");el.id="pal";el.className="pal";el.setAttribute("role","dialog");el.setAttribute("aria-label","Search");
+  el.innerHTML=`<input id="palq" placeholder="Search tasks, payments, projects… or type a command" autocomplete="off"><ul id="pall" role="listbox"></ul>`;
+  document.body.append(el);$("#scrim").classList.add("on");
+  const q=$("#palq");q.addEventListener("input",()=>{palSel=0;palList()});q.focus();palList();
+}
+function palList(){
+  const q=($("#palq")?.value||"").toLowerCase().trim(); const items=[];
+  const recs=[...Store.recs.values()].filter(r=>KINDS[r.kind]&&(!q||[r.title,r.party,r.client,r.product,r.notes].join(" ").toLowerCase().includes(q))).slice(0,q?30:6);
+  if(recs.length){items.push({sec:q?"Results":"Recent"});recs.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).forEach(r=>items.push({l:r.title,sub:KINDS[r.kind].l,icon:KINDS[r.kind].icon,run:()=>openDrawer(r.kind,r.id)}))}
+  const nav=VIEWS.filter(v=>!q||v.l.toLowerCase().includes(q)).map(v=>({l:"Go to "+v.l,icon:v.icon,run:()=>go(v.id)}));
+  const add=Object.entries(KINDS).filter(([k,K])=>!q||("new "+K.l).toLowerCase().includes(q)).map(([k,K])=>({l:"New "+K.l.toLowerCase(),icon:I.plus,run:()=>openDrawer(k)}));
+  if(add.length)items.push({sec:"Create"},...add); if(nav.length)items.push({sec:"Go to"},...nav);
+  palItems=items.filter(x=>!x.sec);
+  let n=-1; $("#pall").innerHTML=items.map(x=>x.sec?`<li class="sec">${x.sec}</li>`:(n++,`<li role="option" data-pi="${n}" class="${n===palSel?"sel":""}">${icon(x.icon)}<span>${esc(x.l)}</span>${x.sub?`<small>${esc(x.sub)}</small>`:""}</li>`)).join("")||`<li class="sec">No matches</li>`;
+}
+function closePalette(){$("#pal")?.remove();if(!drawerRec)$("#scrim").classList.remove("on")}
+function openMenu(anchor){
+  closeMenu();const m=document.createElement("div");m.className="menu";m.id="menu";m.setAttribute("role","menu");
+  const order=["task","txn","target","plan","project","feature","experiment","ops","investment"];
+  m.innerHTML=order.map(k=>`<button type="button" role="menuitem" data-act="add" data-kind="${k}">${icon(KINDS[k].icon)}${esc(KINDS[k].l)}<small>${VIEWS.find(v=>v.id===KINDS[k].view).l}</small></button>`).join("");
+  document.body.append(m);const r=anchor.getBoundingClientRect();
+  m.style.top=(r.bottom+6)+"px";m.style.left=Math.max(16,Math.min(r.right-250,innerWidth-266))+"px";m.querySelector("button").focus();
+}
+function closeMenu(){$("#menu")?.remove()}
+
+/* ---------- settings ---------- */
+function openSettings(){
+  const s=settings();
+  $("#drawer").innerHTML=`<header><h2>Settings &amp; data</h2><button class="iconbtn" type="button" data-act="close" aria-label="Close">${icon(I.x)}</button></header>
+  <form id="sform" onsubmit="return false">
+    <div class="fpair"><div class="f"><label for="s_cur">Currency</label><select id="s_cur">${Object.entries(CUR).map(([k,v])=>`<option value="${k}" ${s.currency===k?"selected":""}>${v} ${k}</option>`).join("")}</select></div>
+    <div class="f"><label for="s_style">Big numbers</label><select id="s_style"><option value="lakh" ${s.style==="lakh"?"selected":""}>Lakh / crore (12.5L)</option><option value="intl" ${s.style!=="lakh"?"selected":""}>Million / billion (1.25M)</option></select></div></div>
+    <p class="hint" style="margin:0">${Store.mode==="db"?"Your data is saved to your Claude account and syncs across devices.":"Your data is saved in this browser only."}</p>
+    <div class="f"><label for="s_json">Backup</label><textarea id="s_json" rows="6" placeholder="Paste a backup here to import it"></textarea><span class="hint">Copy a backup of everything, or paste one and press Import.</span></div>
+    <div class="toolbar"><button class="btn sm" type="button" data-act="export">Copy backup</button><button class="btn sm" type="button" data-act="import">Import</button><button class="btn sm" type="button" data-act="clear-examples">Clear example data</button></div>
+    <div class="toolbar" style="margin-top:12px"><button class="btn sm danger" type="button" data-act="wipe" id="wipeBtn">Delete everything</button></div>
+  </form><footer><div class="spacer"></div><button class="btn primary" type="button" data-act="close">Done</button></footer>`;
+  $("#drawer").classList.add("on");$("#scrim").classList.add("on");drawerRec=null;
+  const upd=()=>{Store.save({...settings(),currency:$("#s_cur").value,style:$("#s_style").value})};
+  $("#s_cur").onchange=upd;$("#s_style").onchange=upd;
+}
+
+/* ---------- events ---------- */
+let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),2200)}
+const armed=new WeakMap();
+function arm(btn,label,fn){if(btn.classList.contains("armed")){fn();return}btn.classList.add("armed");const old=btn.textContent;btn.textContent=label;setTimeout(()=>{btn.classList.remove("armed");btn.textContent=old},3500)}
+
+document.addEventListener("click",e=>{
+  const pi=e.target.closest("[data-pi]");if(pi){const it=palItems[+pi.dataset.pi];closePalette();it&&it.run();return}
+  const a=e.target.closest("[data-act]");
+  if(!a){const o=e.target.closest("[data-open]");if(o){const r=Store.get(o.dataset.open);r&&openDrawer(r.kind,r.id)}
+    if(!e.target.closest("#menu"))closeMenu();return}
+  const act=a.dataset.act, id=a.dataset.id; e.stopPropagation();
+  if(act!=="quickadd")closeMenu();
+  switch(act){
+    case "go": closeDrawer();go(a.dataset.view);break;
+    case "add": closePalette();openDrawer(a.dataset.kind,null,a.dataset.def?JSON.parse(a.dataset.def):null);break;
+    case "quickadd": $("#menu")?closeMenu():openMenu(a);break;
+    case "palette": openPalette();break;
+    case "close": closeDrawer();break;
+    case "settings": openSettings();break;
+    case "del": arm(a,"Confirm delete",()=>{const r=drawerRec.rec;Store.remove(r.id);closeDrawer();toast(KINDS[r.kind].l+" deleted")});break;
+    case "recv":{const r={...Store.get(id),status:"done",doneOn:today()};Store.save(r);toast(r.dir==="in"?"Marked received: "+money(r.amount,true):"Marked paid");break}
+    case "task-toggle":{const r={...Store.get(id)};r.status=r.status==="done"?"todo":"done";r.doneOn=r.status==="done"?today():undefined;Store.save(r);break}
+    case "ops-done":{const r={...Store.get(id)};r.lastDone=today();r.nextDue=nextDue(r.nextDue<today()?today():r.nextDue,r.freq);Store.save(r);toast("Next due "+fmtD(r.nextDue));break}
+    case "obj-toggle":{const r=JSON.parse(JSON.stringify(Store.get(id)));r.objectives[+a.dataset.i].done=!r.objectives[+a.dataset.i].done;Store.save(r);break}
+    case "task-mode": ui.taskMode=a.dataset.v;try{localStorage.setItem("hishabhq.taskMode",ui.taskMode)}catch(_){}render();break;
+    case "task-area": ui.taskArea=a.dataset.v;render();break;
+    case "plan-area": ui.planArea=a.dataset.v;render();break;
+    case "h-filter": ui.hFilter=a.dataset.v;render();break;
+    case "clear-examples":{const ex=[...Store.recs.values()].filter(r=>r.example);ex.forEach(r=>{Store.recs.delete(r.id);Store.persist(r.id,true)});render();toast(ex.length?`Removed ${ex.length} example entries`:"No example data left");break}
+    case "export":{const txt=JSON.stringify([...Store.recs.values()],null,1);const ta=$("#s_json");ta.value=txt;
+      const done=()=>toast("Backup copied");navigator.clipboard?.writeText(txt).then(done,()=>{ta.select();toast("Backup is in the box. Copy it from there.")})||(ta.select());break}
+    case "import":{try{const arr=JSON.parse($("#s_json").value);if(!Array.isArray(arr))throw 0;let n=0;arr.forEach(r=>{if(r&&r.id&&r.kind&&/^[A-Za-z0-9_\-.~:@+]+$/.test(r.id)){Store.recs.set(r.id,r);Store.persist(r.id);n++}});render();toast(`Imported ${n} entries`)}catch(_){toast("That backup isn't valid JSON. Paste the full text from Copy backup.")}break}
+    case "wipe": arm(a,"Click again to delete everything",()=>{[...Store.recs.keys()].forEach(k=>{Store.recs.delete(k);Store.persist(k,true)});render();closeDrawer();toast("All data deleted")});break;
+  }
+});
+document.addEventListener("submit",e=>{if(e.target.id==="dform")submitDrawer(e)});
+document.addEventListener("change",e=>{const c=e.target.dataset?.cur;if(c){const r={...Store.get(c),current:parseFloat(e.target.value)||0};delete r.example;Store.save(r);toast("Progress updated")}});
+$("#scrim").addEventListener("click",()=>{closePalette();closeDrawer()});
+document.addEventListener("keydown",e=>{
+  const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||"");
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("#pal")?closePalette():openPalette();return}
+  if(e.key==="Escape"){if($("#pal"))closePalette();else if($("#menu"))closeMenu();else closeDrawer();return}
+  if($("#pal")){if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();palSel=(palSel+(e.key==="ArrowDown"?1:-1)+palItems.length)%palItems.length;palList();$("#pall .sel")?.scrollIntoView({block:"nearest"})}
+    else if(e.key==="Enter"){e.preventDefault();const it=palItems[palSel];closePalette();it&&it.run()}return}
+  if(typing||e.metaKey||e.ctrlKey||e.altKey||drawerRec)return;
+  if(e.key==="/"){e.preventDefault();openPalette()}
+  else if(e.key==="n"||e.key==="N"){e.preventDefault();openMenu($("#qaBtn"))}
+});
+/* drag & drop */
+document.addEventListener("dragstart",e=>{const c=e.target.closest?.("[data-drag]");if(!c)return;e.dataTransfer.setData("text/plain",c.dataset.drag);e.dataTransfer.effectAllowed="move";c.classList.add("dragging")});
+document.addEventListener("dragend",e=>{e.target.classList?.remove("dragging");$$(".col.over").forEach(c=>c.classList.remove("over"))});
+document.addEventListener("dragover",e=>{const col=e.target.closest?.("[data-drop]");if(!col)return;e.preventDefault();$$(".col.over").forEach(c=>c!==col&&c.classList.remove("over"));col.classList.add("over")});
+document.addEventListener("drop",e=>{const col=e.target.closest?.("[data-drop]");if(!col)return;e.preventDefault();const id=e.dataTransfer.getData("text/plain"),r=Store.get(id);if(!r)return;const f=col.dataset.drop,v=col.dataset.v;if(r[f]===v){render();return}const n={...r,[f]:v};if(r.kind==="task"&&v==="done")n.doneOn=today();Store.save(n)});
+
+/* ---------- boot ---------- */
+function setSync(mode){const s=$("#sync");s.className="sync "+(mode==="db"?"on":mode==="local"?"local":"");s.querySelector("span").textContent=mode==="db"?"Synced to your account":mode==="local"?"Saved in this browser":"Connecting…"}
+function useLocal(){if(Store.mode!=="pending")return;Store.mode="local";const pend=new Map(Store.recs);Store.loadLocal();pend.forEach((r,k)=>Store.recs.set(k,r));Store.saveLocal();setSync("local");render()}
+render();
+(async()=>{
+  let db=null;
+  try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch(e){db=null}
+  if(!db){useLocal();return}
+  try{
+    Store.col=db.collection("records");
+    let first=true;
+    Store.col.onSnapshot(snap=>{
+      const local=new Map([...Store.recs].filter(([k])=>Store.queued.has(k)));
+      Store.recs=new Map(snap.docs.map(d=>[d.id,{...d.data(),id:d.id}]));
+      if(first){first=false;Store.mode="db";setSync("db");local.forEach((r,k)=>{Store.recs.set(k,r);Store.persist(k)});Store.queued.clear()}
+      render();
+    },err=>{if(Store.mode==="pending")useLocal();else toast("Live sync stopped. Reload the page to reconnect.")});
+  }catch(e){useLocal()}
+})();
+</script>
