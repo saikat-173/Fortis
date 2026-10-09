@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fortis Monthly Planner</title>
+<meta name="description" content="Plan an entire month: Gantt timeline, projects, task allocation, outputs and goals — export everything to Excel.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="rail" id="rail"></aside>
+  <div class="main">
+    <header class="topbar" id="topbar"></header>
+    <main class="view" id="view"></main>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+<div class="tip" id="tip"></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="vendor/exceljs.min.js"></script>
+<script src="app.js"></script>
+<script src="export.js"></script>
+</body>
+</html>
