@@ -1,4 +1,4 @@
-/* Fortis Monthly Planner — vanilla JS, no build step. Data lives in localStorage; Excel export in export.js. */
+/* Fortis Monthly Planner — vanilla JS, no build step. Plans are stored per user via the server API (falls back to localStorage when no server); Excel export in export.js. */
 (() => {
 'use strict';
 
@@ -67,6 +67,7 @@ const IC = {
   db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  out: '<path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   alert: '<path d="M12 3 2 20h20L12 3zM12 10v5M12 17.5v.5"/>',
   flag: '<path d="M5 21V4m0 0h12l-2 4 2 4H5"/>',
@@ -152,7 +153,39 @@ function load() {
   return null;
 }
 let saveT;
-function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* quota/private mode */ } }, 120); }
+const SRV = { on: false, user: null, version: 0, dirty: false, saving: false, state: 'idle' };
+async function req(method, url, body) {
+  const r = await fetch('/api' + url, { method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'planner' }, body: body ? JSON.stringify(body) : undefined });
+  let j = {}; try { j = await r.json(); } catch (e) { /* non-JSON (no API on this host) */ }
+  if (!r.ok || (method === 'GET' && j === null)) throw Object.assign(new Error(j.error || 'Request failed'), { status: r.status || 0 });
+  return j;
+}
+function setSaveState(st) {
+  SRV.state = st; const el = $('#savestate'); if (!el) return;
+  const t = { saved: ['good', 'Saved to your account'], saving: ['warn', 'Saving…'], error: ['bad', 'Offline — retrying'], local: ['', 'Saved in this browser only'] }[st] || ['', ''];
+  el.className = 'savestate ' + t[0]; el.innerHTML = `<i></i>${t[1]}`;
+}
+function save() {
+  clearTimeout(saveT);
+  if (!SRV.on) { saveT = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); setSaveState('local'); } catch (e) { /* quota/private mode */ } }, 120); return; }
+  SRV.dirty = true; setSaveState('saving'); saveT = setTimeout(flush, 500);
+}
+async function flush() {
+  if (!SRV.on || SRV.saving || !SRV.dirty || !S) return;
+  SRV.saving = true; SRV.dirty = false; let failed = false;
+  try { const r = await req('PUT', '/plan', { data: S, version: SRV.version }); SRV.version = r.version; if (!SRV.dirty) setSaveState('saved'); }
+  catch (e) {
+    if (e.status === 409) { toast('This plan changed in another tab or device — loading the latest.', 'bad'); await pullPlan(); renderAll(); }
+    else if (e.status === 401) { S = null; showAuth('Your session expired. Please sign in again.'); }
+    else { failed = true; SRV.dirty = true; setSaveState('error'); saveT = setTimeout(flush, 5000); }
+  } finally { SRV.saving = false; if (SRV.dirty && !failed) { clearTimeout(saveT); saveT = setTimeout(flush, 300); } }
+}
+window.addEventListener('pagehide', () => { if (SRV.on && SRV.dirty && S) { try { fetch('/api/plan', { method: 'PUT', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'planner' }, body: JSON.stringify({ data: S, version: SRV.version }) }); } catch (e) { /* ignore */ } } });
+async function pullPlan() {
+  const r = await req('GET', '/plan');
+  if (r.data) { S = normalize(r.data); S.sample = !!r.data.sample; SRV.version = r.version; SRV.dirty = false; setSaveState('saved'); }
+  else { S = load() || seed(); SRV.version = 0; save(); } // first sign-in: adopt any browser-only plan, else start with the sample
+}
 function touch() { if (S.sample) S.sample = false; save(); }
 
 /* ───────────────────────── derived data ───────────────────────── */
@@ -238,6 +271,7 @@ function renderRail() {
     <div class="nav-label">Workspace</div>
     ${VIEWS.map(([k, l, i]) => `<button class="nav-btn ${U.view === k ? 'active' : ''}" data-act="nav" data-v="${k}">${ico(i)}<span>${l}</span>${counts[k] != null ? `<span class="count">${counts[k]}</span>` : ''}</button>`).join('')}
     <div class="rail-spacer"></div>
+    <div class="user-card">${SRV.on && SRV.user ? `<span class="avatar" style="background:#9FB0FF">${initials(SRV.user.name)}</span><div class="u-main"><b>${esc(SRV.user.name)}</b><span>${esc(SRV.user.email)}</span></div><button class="u-out" data-act="logout" title="Sign out">${ico('out')}</button>` : `<div class="u-main"><b>Local mode</b><span>No server — data stays in this browser</span></div>`}<div class="savestate" id="savestate"></div></div>
     <div class="rail-card"><h4>${esc(mi.label)}</h4><p>${left} day${left === 1 ? '' : 's'} left · ${ts.filter(t => t.status === 'done').length}/${ts.length} tasks done</p>
       <div class="ring-row">${ring(pct, 54, 6, '#9FB0FF', false)}<div><div class="big">${Math.round(pct)}%</div><div class="sm">overall progress</div></div></div></div>`;
 }
@@ -737,6 +771,7 @@ function exportModal() {
 function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
 FP.download = download;
 const ACT = {
+  logout: async () => { try { await req('POST', '/logout'); } catch (e) { /* ignore */ } S = null; SRV.user = null; closeDrawer(); closeModal(); showAuth(); },
   nav: d => { U.view = d.v; renderAll(); $('#view').scrollTop = 0; },
   month: d => { S.plan.month = shiftMonth(S.plan.month, +d.d); U.gantt.scrollL = null; save(); renderAll(); },
   'month-today': () => { S.plan.month = todayISO().slice(0, 7); U.gantt.scrollL = null; save(); renderAll(); },
@@ -779,7 +814,7 @@ document.addEventListener('change', e => {
 document.addEventListener('click', e => { if (e.target.closest('select[data-chg=tstatus]')) e.stopPropagation(); }, true);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if ($('#modal').classList.contains('on')) closeModal(); else if (DR) closeDrawer(); }
-  const typing = /INPUT|TEXTAREA|SELECT/.test((e.target.tagName || '')); if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!S) return; const typing = /INPUT|TEXTAREA|SELECT/.test((e.target.tagName || '')); if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'n') { e.preventDefault(); openDrawer('task'); }
   else if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
 });
@@ -787,6 +822,41 @@ document.addEventListener('keydown', e => {
 /* ───────────────────────── boot ───────────────────────── */
 FP.state = () => S; FP.weekendDows = () => WEEKENDS[S.plan.weekend]; FP.helpers = { MI, monthInfo, inMonth, isWE, computeLoad, memberMonth, goalPct, health, dur, wavg, lab, STATUS, PRIORITY, PSTATUS, WEEKEND_LABEL, project, member, task, projTasks, fmtFull, fmt, diff, addDays, dow, todayISO, WDL, MON, shade, inkOn, byId };
 try { const th = localStorage.getItem(THEME_KEY); if (th) document.documentElement.dataset.theme = th; } catch (e) { /* ignore */ }
-S = load() || seed();
-renderAll();
+
+/* ───────────────────────── sign in / sign up ───────────────────────── */
+async function showAuth(msg) {
+  let cfg = { allowSignup: true }; try { cfg = await req('GET', '/config'); } catch (e) { /* ignore */ }
+  document.getElementById('auth')?.remove();
+  let mode = 'login';
+  const el = document.createElement('div'); el.id = 'auth'; el.className = 'auth';
+  const draw = (err) => {
+    el.innerHTML = `<div class="auth-art"><div class="brand"><div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M8 12h12M4 18h8"/></svg></div><div><div class="brand-name">Fortis</div><div class="brand-sub">Monthly Planner</div></div></div>
+      <h1>Plan the whole month.<br>Ship it on time.</h1><p>Gantt timeline, projects, task allocation, outputs and goals — in one workspace, saved to your account and exportable to Excel.</p>
+      <div class="auth-bars"><i style="--w:70%;--c:#6C7BFF"></i><i style="--w:48%;--c:#22C3A6;--o:18%"></i><i style="--w:62%;--c:#FF8A5B;--o:34%"></i><i style="--w:40%;--c:#A67BFF;--o:8%"></i></div></div>
+    <form class="auth-card" id="authForm" novalidate><h2>${mode === 'login' ? 'Welcome back' : 'Create your account'}</h2><p class="muted">${mode === 'login' ? 'Sign in to open your plan.' : 'Your plan is private to your account.'}</p>
+      ${err ? `<div class="auth-err" role="alert">${esc(err)}</div>` : ''}
+      ${mode === 'signup' ? '<div class="fld"><label for="au-name">Full name</label><input id="au-name" name="name" autocomplete="name" required></div>' : ''}
+      <div class="fld"><label for="au-email">Email</label><input id="au-email" name="email" type="email" autocomplete="email" required></div>
+      <div class="fld"><label for="au-pw">Password</label><input id="au-pw" name="password" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" minlength="8" required>${mode === 'signup' ? '<div class="hint">At least 8 characters.</div>' : ''}</div>
+      <button class="btn primary auth-go" type="submit" id="authGo">${mode === 'login' ? 'Sign in' : 'Create account'}</button>
+      ${cfg.allowSignup ? `<div class="auth-switch">${mode === 'login' ? 'New here?' : 'Already have an account?'} <button type="button" id="authSwitch">${mode === 'login' ? 'Create an account' : 'Sign in'}</button></div>` : '<div class="auth-switch muted">Sign-ups are closed. Ask the workspace owner for access.</div>'}
+    </form>`;
+    el.querySelector('#authSwitch')?.addEventListener('click', () => { mode = mode === 'login' ? 'signup' : 'login'; draw(); el.querySelector('input')?.focus(); });
+    el.querySelector('#authForm').addEventListener('submit', async ev => {
+      ev.preventDefault(); const f = ev.target, go = el.querySelector('#authGo'); go.disabled = true; go.textContent = 'Please wait…';
+      try {
+        const r = await req('POST', mode === 'login' ? '/login' : '/signup', { name: f.elements.name?.value, email: f.elements.email.value, password: f.elements.password.value });
+        SRV.on = true; SRV.user = r.user; await pullPlan(); el.remove(); U.view = 'dashboard'; renderAll();
+      } catch (e) { const em = f.elements.email.value; draw(e.message); el.querySelector('#au-email').value = em; }
+    });
+  };
+  draw(msg); document.body.appendChild(el); el.querySelector('input')?.focus();
+}
+
+(async function boot() {
+  try {
+    const me = await req('GET', '/me'); SRV.on = true;
+    if (me.user) { SRV.user = me.user; await pullPlan(); renderAll(); } else showAuth();
+  } catch (e) { SRV.on = false; S = load() || seed(); renderAll(); setSaveState('local'); } // no API on this host: browser-only mode
+})();
 })();

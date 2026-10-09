@@ -1,0 +1,9 @@
+{
+  "name": "fortis-monthly-planner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monthly planner with Gantt timeline, task allocation, goals and Excel export — with accounts and a database.",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=22.13" }
+}

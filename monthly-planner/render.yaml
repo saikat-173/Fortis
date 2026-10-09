@@ -1,0 +1,17 @@
+# One-click deploy on Render: New + > Blueprint > pick this repo.
+services:
+  - type: web
+    name: fortis-monthly-planner
+    runtime: docker
+    rootDir: monthly-planner
+    plan: starter            # persistent disks need a paid instance
+    healthCheckPath: /healthz
+    disk:
+      name: planner-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ALLOW_SIGNUP
+        value: "true"        # set to "false" after you and your team have signed up
